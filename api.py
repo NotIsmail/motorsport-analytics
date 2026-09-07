@@ -13,10 +13,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -65,6 +66,10 @@ def season_clause(season):
     return "WHERE season = ?", [season]
 
 
+# =========================================================
+# HOME
+# =========================================================
+
 @app.get("/")
 def home():
     return {
@@ -72,6 +77,10 @@ def home():
         "status": "online"
     }
 
+
+# =========================================================
+# AVAILABLE SEASONS
+# =========================================================
 
 @app.get("/seasons")
 def get_seasons():
@@ -96,7 +105,7 @@ def get_seasons():
 
 
 # =========================================================
-# STANDINGS
+# DRIVER STANDINGS
 # =========================================================
 
 @app.get("/standings")
@@ -110,22 +119,29 @@ def standings(season: int = 2025):
             driver_id,
             driver_name,
             SUM(points) AS points,
+
             SUM(
                 CASE
                     WHEN position = 1 THEN 1
                     ELSE 0
                 END
             ) AS wins,
+
             SUM(
                 CASE
                     WHEN position BETWEEN 1 AND 3 THEN 1
                     ELSE 0
                 END
             ) AS podiums,
+
             COUNT(*) AS races
+
         FROM results
+
         WHERE season = ?
+
         GROUP BY driver_id, driver_name
+
         ORDER BY points DESC
     """, (season,))
 
@@ -178,6 +194,10 @@ def drivers(season: int = 2025):
     ]
 
 
+# =========================================================
+# DRIVER PROFILE
+# =========================================================
+
 @app.get("/drivers/{driver_id}")
 def driver_profile(
     driver_id: str,
@@ -191,23 +211,29 @@ def driver_profile(
         SELECT
             driver_name,
             SUM(points),
+
             SUM(
                 CASE
                     WHEN position = 1 THEN 1
                     ELSE 0
                 END
             ),
+
             SUM(
                 CASE
                     WHEN position BETWEEN 1 AND 3 THEN 1
                     ELSE 0
                 END
             ),
+
             COUNT(*),
             AVG(position)
+
         FROM results
+
         WHERE driver_id = ?
         AND season = ?
+
         GROUP BY driver_id, driver_name
     """, (driver_id, season))
 
@@ -215,6 +241,7 @@ def driver_profile(
 
     if not row:
         conn.close()
+
         raise HTTPException(
             status_code=404,
             detail="Driver not found for this season."
@@ -251,6 +278,10 @@ def driver_profile(
     }
 
 
+# =========================================================
+# DRIVER RACE RESULTS
+# =========================================================
+
 @app.get("/drivers/{driver_id}/races")
 def driver_races(
     driver_id: str,
@@ -269,9 +300,12 @@ def driver_races(
             points,
             laps,
             status
+
         FROM results
+
         WHERE driver_id = ?
         AND season = ?
+
         ORDER BY round
     """, (driver_id, season))
 
@@ -315,10 +349,16 @@ def teams(season: int = 2025):
     conn.close()
 
     return [
-        {"team": row[0]}
+        {
+            "team": row[0]
+        }
         for row in rows
     ]
 
+
+# =========================================================
+# TEAM PROFILE
+# =========================================================
 
 @app.get("/teams/{team_name}")
 def team_profile(
@@ -332,21 +372,26 @@ def team_profile(
     cursor.execute("""
         SELECT
             SUM(points),
+
             SUM(
                 CASE
                     WHEN position = 1 THEN 1
                     ELSE 0
                 END
             ),
+
             SUM(
                 CASE
                     WHEN position BETWEEN 1 AND 3 THEN 1
                     ELSE 0
                 END
             ),
+
             COUNT(*),
             AVG(position)
+
         FROM results
+
         WHERE team = ?
         AND season = ?
     """, (team_name, season))
@@ -355,6 +400,7 @@ def team_profile(
 
     if not row or row[3] == 0:
         conn.close()
+
         raise HTTPException(
             status_code=404,
             detail="Team not found for this season."
@@ -391,6 +437,10 @@ def team_profile(
     }
 
 
+# =========================================================
+# TEAM RACE RESULTS
+# =========================================================
+
 @app.get("/teams/{team_name}/races")
 def team_races(
     team_name: str,
@@ -405,10 +455,14 @@ def team_races(
             round,
             race_name,
             SUM(points) AS points
+
         FROM results
+
         WHERE team = ?
         AND season = ?
+
         GROUP BY round, race_name
+
         ORDER BY round
     """, (team_name, season))
 
@@ -440,21 +494,27 @@ def team_standings(season: int = 2025):
         SELECT
             team,
             SUM(points) AS points,
+
             SUM(
                 CASE
                     WHEN position = 1 THEN 1
                     ELSE 0
                 END
             ) AS wins,
+
             SUM(
                 CASE
                     WHEN position BETWEEN 1 AND 3 THEN 1
                     ELSE 0
                 END
             ) AS podiums
+
         FROM results
+
         WHERE season = ?
+
         GROUP BY team
+
         ORDER BY points DESC
     """, (season,))
 
@@ -492,22 +552,28 @@ def compare_drivers(
             driver_id,
             driver_name,
             SUM(points),
+
             SUM(
                 CASE
                     WHEN position = 1 THEN 1
                     ELSE 0
                 END
             ),
+
             SUM(
                 CASE
                     WHEN position BETWEEN 1 AND 3 THEN 1
                     ELSE 0
                 END
             ),
+
             AVG(position)
+
         FROM results
+
         WHERE season = ?
         AND driver_id IN (?, ?)
+
         GROUP BY driver_id, driver_name
     """, (
         season,
@@ -550,21 +616,26 @@ def compare_teams(
         SELECT
             team,
             SUM(points),
+
             SUM(
                 CASE
                     WHEN position = 1 THEN 1
                     ELSE 0
                 END
             ),
+
             SUM(
                 CASE
                     WHEN position BETWEEN 1 AND 3 THEN 1
                     ELSE 0
                 END
             )
+
         FROM results
+
         WHERE season = ?
         AND team IN (?, ?)
+
         GROUP BY team
     """, (
         season,
@@ -606,9 +677,12 @@ def qualifying_vs_race(
             race_name,
             grid,
             position
+
         FROM results
+
         WHERE driver_id = ?
         AND season = ?
+
         ORDER BY round
     """, (driver_id, season))
 
@@ -643,11 +717,16 @@ def consistency(season: int = 2025):
             driver_name,
             AVG(position),
             COUNT(*)
+
         FROM results
+
         WHERE season = ?
         AND position > 0
+
         GROUP BY driver_id, driver_name
+
         HAVING COUNT(*) >= 3
+
         ORDER BY AVG(position)
     """, (season,))
 
@@ -683,12 +762,16 @@ def comebacks(season: int = 2025):
             grid,
             position,
             (grid - position) AS positions_gained
+
         FROM results
+
         WHERE season = ?
         AND grid > 0
         AND position > 0
         AND grid > position
+
         ORDER BY positions_gained DESC
+
         LIMIT 20
     """, (season,))
 
@@ -723,7 +806,9 @@ def dnfs(season: int = 2025):
             driver_id,
             driver_name,
             status
+
         FROM results
+
         WHERE season = ?
     """, (season,))
 
@@ -738,7 +823,6 @@ def dnfs(season: int = 2025):
         if is_dnf(status):
 
             if driver_id not in dnf_counts:
-
                 dnf_counts[driver_id] = {
                     "driver_id": driver_id,
                     "driver_name": driver_name,
