@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Motorsport Analytics</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #0b0d10;
+    color: #e8eaed;
+}
+
+header {
+    padding: 24px 40px;
+    border-bottom: 1px solid #22262c;
+    background: #0d1014;
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.subtitle {
+    margin-top: 6px;
+    color: #8f969f;
+    font-size: 14px;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+select,
+input,
+button {
+    background: #15191e;
+    border: 1px solid #30363d;
+    color: #e8eaed;
+    border-radius: 7px;
+    padding: 10px 12px;
+}
+
+button {
+    cursor: pointer;
+    background: #e10600;
+    border-color: #e10600;
+    font-weight: bold;
+}
+
+button:hover {
+    opacity: 0.88;
+}
+
+main {
+    max-width: 1400px;
+    margin: auto;
+    padding: 30px 40px 60px;
+}
+
+section {
+    margin-bottom: 34px;
+}
+
+.section-heading {
+    margin-bottom: 15px;
+}
+
+.section-heading h2 {
+    margin: 0;
+    font-size: 21px;
+}
+
+.section-heading p {
+    margin: 5px 0 0;
+    color: #7f8790;
+    font-size: 13px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.card {
+    background: #111419;
+    border: 1px solid #242930;
+    border-radius: 10px;
+    padding: 18px;
+}
+
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 14px;
+    font-size: 15px;
+}
+
+.metric {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.metric-label {
+    color: #808892;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 11px 12px;
+    border-bottom: 1px solid #242930;
+    font-size: 13px;
+}
+
+th {
+    color: #8f969f;
+    font-weight: normal;
+}
+
+tr:hover {
+    background: #15191e;
+}
+
+.chart-container {
+    position: relative;
+    height: 320px;
+}
+
+select {
+    min-width: 150px;
+}
+
+.status {
+    color: #8f969f;
+    font-size: 12px;
+}
+
+.highlight {
+    color: #e10600;
+}
+
+@media (max-width: 1000px) {
+
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+@media (max-width: 700px) {
+
+    main {
+        padding: 20px;
+    }
+
+    header {
+        padding: 20px;
+    }
+
+    .grid,
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+    <div class="header-row">
+
+        <div>
+            <h1>Motorsport Analytics</h1>
+            <div class="subtitle">
+                Formula 1 race performance & championship analysis
+            </div>
+        </div>
+
+        <div class="controls">
+
+            <select id="seasonSelect"></select>
+
+            <input
+                type="number"
+                id="newSeason"
+                placeholder="Year"
+                min="1950"
+                max="2100"
+            >
+
+            <button onclick="loadSeason()">
+                Add Season
+            </button>
+
+        </div>
+
+    </div>
+
+    <div id="loadStatus" class="status"></div>
+
+</header>
+
+
+<main>
+
+<!-- =====================================================
+     CHAMPIONSHIP
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Championship</h2>
+
+        <p>
+            Driver and constructor performance across the selected season.
+        </p>
+
+    </div>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="metric" id="championName">—</div>
+            <div class="metric-label">Championship leader</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="championPoints">—</div>
+            <div class="metric-label">Leader points</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="totalDrivers">—</div>
+            <div class="metric-label">Drivers</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="totalTeams">—</div>
+            <div class="metric-label">Constructors</div>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     DRIVER STANDINGS
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Driver Standings</h2>
+
+        <p>
+            Championship points, wins, podiums and race participation.
+        </p>
+
+    </div>
+
+    <div class="card table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>#</th>
+                    <th>Driver</th>
+                    <th>Points</th>
+                    <th>Wins</th>
+                    <th>Podiums</th>
+                    <th>Races</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="standingsTable"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     DRIVER ANALYSIS
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Driver Analysis</h2>
+
+        <p>
+            Select a driver to examine season-long race performance.
+        </p>
+
+    </div>
+
+    <div class="controls">
+
+        <select id="driverSelect"></select>
+
+    </div>
+
+    <br>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="metric" id="driverPoints">—</div>
+            <div class="metric-label">Points</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="driverWins">—</div>
+            <div class="metric-label">Wins</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="driverPodiums">—</div>
+            <div class="metric-label">Podiums</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="driverDnfs">—</div>
+            <div class="metric-label">DNFs</div>
+        </div>
+
+    </div>
+
+    <br>
+
+    <div class="grid-2">
+
+        <div class="card">
+
+            <h3>Race Position</h3>
+
+            <div class="chart-container">
+                <canvas id="positionChart"></canvas>
+            </div>
+
+        </div>
+
+        <div class="card">
+
+            <h3>Points Per Race</h3>
+
+            <div class="chart-container">
+                <canvas id="pointsChart"></canvas>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     DRIVER VS DRIVER
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Driver vs Driver</h2>
+
+        <p>
+            Compare two drivers across the selected season.
+        </p>
+
+    </div>
+
+    <div class="controls">
+
+        <select id="driverCompareA"></select>
+
+        <select id="driverCompareB"></select>
+
+        <button onclick="compareDrivers()">
+            Compare
+        </button>
+
+    </div>
+
+    <br>
+
+    <div class="card table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Driver</th>
+                    <th>Points</th>
+                    <th>Wins</th>
+                    <th>Podiums</th>
+                    <th>Avg Position</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="driverCompareTable"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     TEAM ANALYSIS
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Constructor Analysis</h2>
+
+        <p>
+            Team championship performance and race-by-race scoring.
+        </p>
+
+    </div>
+
+    <div class="controls">
+
+        <select id="teamSelect"></select>
+
+    </div>
+
+    <br>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="metric" id="teamPoints">—</div>
+            <div class="metric-label">Points</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="teamWins">—</div>
+            <div class="metric-label">Wins</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="teamPodiums">—</div>
+            <div class="metric-label">Podiums</div>
+        </div>
+
+        <div class="card">
+            <div class="metric" id="teamDnfs">—</div>
+            <div class="metric-label">DNFs</div>
+        </div>
+
+    </div>
+
+    <br>
+
+    <div class="card">
+
+        <h3>Team Championship Progression</h3>
+
+        <div class="chart-container">
+            <canvas id="teamChart"></canvas>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     TEAM STANDINGS
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Constructor Standings</h2>
+
+    </div>
+
+    <div class="card table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>#</th>
+                    <th>Team</th>
+                    <th>Points</th>
+                    <th>Wins</th>
+                    <th>Podiums</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="teamStandingsTable"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     TEAM VS TEAM
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Team vs Team</h2>
+
+        <p>
+            Compare constructor performance directly.
+        </p>
+
+    </div>
+
+    <div class="controls">
+
+        <select id="teamCompareA"></select>
+
+        <select id="teamCompareB"></select>
+
+        <button onclick="compareTeams()">
+            Compare
+        </button>
+
+    </div>
+
+    <br>
+
+    <div class="card table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Team</th>
+                    <th>Points</th>
+                    <th>Wins</th>
+                    <th>Podiums</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="teamCompareTable"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     CONSISTENCY
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Driver Consistency</h2>
+
+        <p>
+            Lower average finishing position indicates stronger
+            race-to-race consistency.
+        </p>
+
+    </div>
+
+    <div class="card table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Driver</th>
+                    <th>Average Finish</th>
+                    <th>Races</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="consistencyTable"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     COMEBACKS
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>Biggest Comebacks</h2>
+
+        <p>
+            Largest number of positions gained from the starting grid.
+        </p>
+
+    </div>
+
+    <div class="card table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Driver</th>
+                    <th>Race</th>
+                    <th>Grid</th>
+                    <th>Finish</th>
+                    <th>Positions Gained</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="comebackTable"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     DNF
+===================================================== -->
+
+<section>
+
+    <div class="section-heading">
+
+        <h2>DNF Analysis</h2>
+
+        <p>
+            Drivers with the highest number of classified retirements.
+        </p>
+
+    </div>
+
+    <div class="card table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Driver</th>
+                    <th>DNFs</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="dnfTable"></tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+</main>
+
+
+<script>
+
+const API = "http://127.0.0.1:8000";
+
+let currentSeason = 2025;
+
+let positionChart = null;
+let pointsChart = null;
+let teamChart = null;
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function seasonQuery() {
+
+    return `?season=${currentSeason}`;
+
+}
+
+
+async function fetchJSON(url) {
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+
+        throw new Error(
+            `Request failed: ${response.status}`
+        );
+
+    }
+
+    return response.json();
+
+}
+
+
+function fillSelect(selectId, items, valueKey, labelKey) {
+
+    const select = document.getElementById(selectId);
+
+    select.innerHTML = "";
+
+    items.forEach(item => {
+
+        const option = document.createElement("option");
+
+        option.value = item[valueKey];
+        option.textContent = item[labelKey];
+
+        select.appendChild(option);
+
+    });
+
+}
+
+
+function clearChart(chart) {
+
+    if (chart) {
+
+        chart.destroy();
+
+    }
+
+}
+
+
+/* =====================================================
+   SEASONS
+===================================================== */
+
+async function loadSeasons() {
+
+    const seasons = await fetchJSON(
+        `${API}/seasons`
+    );
+
+    const select =
+        document.getElementById("seasonSelect");
+
+    select.innerHTML = "";
+
+    seasons.forEach(season => {
+
+        const option =
+            document.createElement("option");
+
+        option.value = season;
+        option.textContent = season;
+
+        select.appendChild(option);
+
+    });
+
+    if (seasons.includes(currentSeason)) {
+
+        select.value = currentSeason;
+
+    } else if (seasons.length > 0) {
+
+        currentSeason = seasons[0];
+
+        select.value = currentSeason;
+
+    }
+
+    select.onchange = async function () {
+
+        currentSeason = Number(this.value);
+
+        await initialize();
+
+    };
+
+}
+
+
+/* =====================================================
+   LOAD NEW SEASON
+===================================================== */
+
+async function loadSeason() {
+
+    const input =
+        document.getElementById("newSeason");
+
+    const status =
+        document.getElementById("loadStatus");
+
+    const season = Number(input.value);
+
+    if (!season || season < 1950) {
+
+        status.textContent =
+            "Enter a valid F1 season.";
+
+        return;
+
+    }
+
+    status.textContent =
+        `Loading ${season}... This may take a while.`;
+
+    try {
+
+        const response = await fetch(
+            `${API}/load-season/${season}`,
+            {
+                method: "POST"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail || "Failed to load season."
+            );
+
+        }
+
+        status.textContent =
+            data.message;
+
+        input.value = "";
+
+        await loadSeasons();
+
+        currentSeason = season;
+
+        document.getElementById(
+            "seasonSelect"
+        ).value = season;
+
+        await initialize();
+
+    } catch (error) {
+
+        status.textContent =
+            `Error: ${error.message}`;
+
+    }
+
+}
+
+
+/* =====================================================
+   CHAMPIONSHIP
+===================================================== */
+
+async function loadChampionship() {
+
+    const standings =
+        await fetchJSON(
+            `${API}/standings${seasonQuery()}`
+        );
+
+    const teams =
+        await fetchJSON(
+            `${API}/team-standings${seasonQuery()}`
+        );
+
+    if (standings.length > 0) {
+
+        document.getElementById(
+            "championName"
+        ).textContent =
+            standings[0].driver_name;
+
+        document.getElementById(
+            "championPoints"
+        ).textContent =
+            standings[0].points;
+
+    }
+
+    document.getElementById(
+        "totalDrivers"
+    ).textContent =
+        standings.length;
+
+    document.getElementById(
+        "totalTeams"
+    ).textContent =
+        teams.length;
+
+}
+
+
+/* =====================================================
+   DRIVER STANDINGS
+===================================================== */
+
+async function loadStandings() {
+
+    const data =
+        await fetchJSON(
+            `${API}/standings${seasonQuery()}`
+        );
+
+    const table =
+        document.getElementById(
+            "standingsTable"
+        );
+
+    table.innerHTML = "";
+
+    data.forEach((driver, index) => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${driver.driver_name}</td>
+                <td>${driver.points}</td>
+                <td>${driver.wins}</td>
+                <td>${driver.podiums}</td>
+                <td>${driver.races}</td>
+            </tr>
+        `;
+
+    });
+
+}
+
+
+/* =====================================================
+   DRIVERS
+===================================================== */
+
+async function loadDrivers() {
+
+    const drivers =
+        await fetchJSON(
+            `${API}/drivers${seasonQuery()}`
+        );
+
+    fillSelect(
+        "driverSelect",
+        drivers,
+        "driver_id",
+        "driver_name"
+    );
+
+    fillSelect(
+        "driverCompareA",
+        drivers,
+        "driver_id",
+        "driver_name"
+    );
+
+    fillSelect(
+        "driverCompareB",
+        drivers,
+        "driver_id",
+        "driver_name"
+    );
+
+    if (drivers.length > 1) {
+
+        document.getElementById(
+            "driverCompareB"
+        ).selectedIndex = 1;
+
+    }
+
+    document.getElementById(
+        "driverSelect"
+    ).onchange = loadDriverAnalysis;
+
+    await loadDriverAnalysis();
+
+}
+
+
+/* =====================================================
+   DRIVER ANALYSIS
+===================================================== */
+
+async function loadDriverAnalysis() {
+
+    const driver =
+        document.getElementById(
+            "driverSelect"
+        ).value;
+
+    if (!driver) return;
+
+    const profile =
+        await fetchJSON(
+            `${API}/drivers/${driver}${seasonQuery()}`
+        );
+
+    const races =
+        await fetchJSON(
+            `${API}/drivers/${driver}/races${seasonQuery()}`
+        );
+
+    document.getElementById(
+        "driverPoints"
+    ).textContent = profile.points;
+
+    document.getElementById(
+        "driverWins"
+    ).textContent = profile.wins;
+
+    document.getElementById(
+        "driverPodiums"
+    ).textContent = profile.podiums;
+
+    document.getElementById(
+        "driverDnfs"
+    ).textContent = profile.dnfs;
+
+
+    clearChart(positionChart);
+    clearChart(pointsChart);
+
+
+    positionChart =
+        new Chart(
+            document.getElementById(
+                "positionChart"
+            ),
+            {
+                type: "line",
+
+                data: {
+                    labels: races.map(
+                        race => race.race_name
+                    ),
+
+                    datasets: [{
+                        label: "Finish Position",
+
+                        data: races.map(
+                            race =>
+                                race.position > 0
+                                ? race.position
+                                : null
+                        ),
+
+                        tension: 0.25
+                    }]
+                },
+
+                options: {
+
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    scales: {
+
+                        y: {
+                            reverse: true,
+                            beginAtZero: false
+                        }
+
+                    }
+                }
+            }
+        );
+
+
+    pointsChart =
+        new Chart(
+            document.getElementById(
+                "pointsChart"
+            ),
+            {
+                type: "bar",
+
+                data: {
+                    labels: races.map(
+                        race => race.race_name
+                    ),
+
+                    datasets: [{
+                        label: "Points",
+
+                        data: races.map(
+                            race => race.points
+                        )
+                    }]
+                },
+
+                options: {
+
+                    responsive: true,
+                    maintainAspectRatio: false
+
+                }
+            }
+        );
+
+}
+
+
+/* =====================================================
+   DRIVER COMPARISON
+===================================================== */
+
+async function compareDrivers() {
+
+    const a =
+        document.getElementById(
+            "driverCompareA"
+        ).value;
+
+    const b =
+        document.getElementById(
+            "driverCompareB"
+        ).value;
+
+    const data =
+        await fetchJSON(
+            `${API}/compare-drivers/${a}/${b}${seasonQuery()}`
+        );
+
+    const table =
+        document.getElementById(
+            "driverCompareTable"
+        );
+
+    table.innerHTML = "";
+
+    data.forEach(driver => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${driver.driver_name}</td>
+                <td>${driver.points}</td>
+                <td>${driver.wins}</td>
+                <td>${driver.podiums}</td>
+                <td>${driver.average_position}</td>
+            </tr>
+        `;
+
+    });
+
+}
+
+
+/* =====================================================
+   TEAMS
+===================================================== */
+
+async function loadTeams() {
+
+    const teams =
+        await fetchJSON(
+            `${API}/teams${seasonQuery()}`
+        );
+
+    fillSelect(
+        "teamSelect",
+        teams,
+        "team",
+        "team"
+    );
+
+    fillSelect(
+        "teamCompareA",
+        teams,
+        "team",
+        "team"
+    );
+
+    fillSelect(
+        "teamCompareB",
+        teams,
+        "team",
+        "team"
+    );
+
+    if (teams.length > 1) {
+
+        document.getElementById(
+            "teamCompareB"
+        ).selectedIndex = 1;
+
+    }
+
+    document.getElementById(
+        "teamSelect"
+    ).onchange = loadTeamAnalysis;
+
+    await loadTeamAnalysis();
+
+}
+
+
+/* =====================================================
+   TEAM ANALYSIS
+===================================================== */
+
+async function loadTeamAnalysis() {
+
+    const team =
+        document.getElementById(
+            "teamSelect"
+        ).value;
+
+    if (!team) return;
+
+    const profile =
+        await fetchJSON(
+            `${API}/teams/${encodeURIComponent(team)}${seasonQuery()}`
+        );
+
+    const races =
+        await fetchJSON(
+            `${API}/teams/${encodeURIComponent(team)}/races${seasonQuery()}`
+        );
+
+    document.getElementById(
+        "teamPoints"
+    ).textContent = profile.points;
+
+    document.getElementById(
+        "teamWins"
+    ).textContent = profile.wins;
+
+    document.getElementById(
+        "teamPodiums"
+    ).textContent = profile.podiums;
+
+    document.getElementById(
+        "teamDnfs"
+    ).textContent = profile.dnfs;
+
+
+    clearChart(teamChart);
+
+
+    let cumulative = 0;
+
+    const cumulativePoints =
+        races.map(race => {
+
+            cumulative += race.points;
+
+            return cumulative;
+
+        });
+
+
+    teamChart =
+        new Chart(
+            document.getElementById(
+                "teamChart"
+            ),
+            {
+                type: "line",
+
+                data: {
+
+                    labels: races.map(
+                        race => race.race_name
+                    ),
+
+                    datasets: [{
+
+                        label:
+                            "Cumulative Points",
+
+                        data:
+                            cumulativePoints,
+
+                        tension: 0.25
+
+                    }]
+                },
+
+                options: {
+
+                    responsive: true,
+                    maintainAspectRatio: false
+
+                }
+            }
+        );
+
+}
+
+
+/* =====================================================
+   TEAM STANDINGS
+===================================================== */
+
+async function loadTeamStandings() {
+
+    const data =
+        await fetchJSON(
+            `${API}/team-standings${seasonQuery()}`
+        );
+
+    const table =
+        document.getElementById(
+            "teamStandingsTable"
+        );
+
+    table.innerHTML = "";
+
+    data.forEach((team, index) => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${team.team}</td>
+                <td>${team.points}</td>
+                <td>${team.wins}</td>
+                <td>${team.podiums}</td>
+            </tr>
+        `;
+
+    });
+
+}
+
+
+/* =====================================================
+   TEAM COMPARISON
+===================================================== */
+
+async function compareTeams() {
+
+    const a =
+        document.getElementById(
+            "teamCompareA"
+        ).value;
+
+    const b =
+        document.getElementById(
+            "teamCompareB"
+        ).value;
+
+    const data =
+        await fetchJSON(
+            `${API}/compare-teams/${encodeURIComponent(a)}/${encodeURIComponent(b)}${seasonQuery()}`
+        );
+
+    const table =
+        document.getElementById(
+            "teamCompareTable"
+        );
+
+    table.innerHTML = "";
+
+    data.forEach(team => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${team.team}</td>
+                <td>${team.points}</td>
+                <td>${team.wins}</td>
+                <td>${team.podiums}</td>
+            </tr>
+        `;
+
+    });
+
+}
+
+
+/* =====================================================
+   CONSISTENCY
+===================================================== */
+
+async function loadConsistency() {
+
+    const data =
+        await fetchJSON(
+            `${API}/consistency${seasonQuery()}`
+        );
+
+    const table =
+        document.getElementById(
+            "consistencyTable"
+        );
+
+    table.innerHTML = "";
+
+    data.forEach(driver => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${driver.driver_name}</td>
+                <td>${driver.average_position}</td>
+                <td>${driver.races}</td>
+            </tr>
+        `;
+
+    });
+
+}
+
+
+/* =====================================================
+   COMEBACKS
+===================================================== */
+
+async function loadComebacks() {
+
+    const data =
+        await fetchJSON(
+            `${API}/comebacks${seasonQuery()}`
+        );
+
+    const table =
+        document.getElementById(
+            "comebackTable"
+        );
+
+    table.innerHTML = "";
+
+    data.forEach(item => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${item.driver_name}</td>
+                <td>${item.race_name}</td>
+                <td>${item.grid}</td>
+                <td>${item.position}</td>
+                <td class="highlight">
+                    +${item.positions_gained}
+                </td>
+            </tr>
+        `;
+
+    });
+
+}
+
+
+/* =====================================================
+   DNF
+===================================================== */
+
+async function loadDnfs() {
+
+    const data =
+        await fetchJSON(
+            `${API}/dnfs${seasonQuery()}`
+        );
+
+    const table =
+        document.getElementById(
+            "dnfTable"
+        );
+
+    table.innerHTML = "";
+
+    data.forEach(item => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${item.driver_name}</td>
+                <td>${item.dnfs}</td>
+            </tr>
+        `;
+
+    });
+
+}
+
+
+/* =====================================================
+   INITIALIZE
+===================================================== */
+
+async function initialize() {
+
+    try {
+
+        await loadChampionship();
+
+        await loadStandings();
+
+        await loadDrivers();
+
+        await loadTeams();
+
+        await loadTeamStandings();
+
+        await loadConsistency();
+
+        await loadComebacks();
+
+        await loadDnfs();
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById(
+            "loadStatus"
+        ).textContent =
+            "Could not load dashboard data.";
+
+    }
+
+}
+
+
+/* =====================================================
+   START
+===================================================== */
+
+(async function () {
+
+    await loadSeasons();
+
+    await initialize();
+
+})();
+
+</script>
+
+</body>
+
+</html>
